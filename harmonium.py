@@ -1,19 +1,19 @@
 import asyncio
 import websockets
 import json
-from pybooklid import LidSensor
 
 async def handler(websocket):
-    print("\nWeb App connected!")
-    with LidSensor() as sensor:
-        for angle in sensor.monitor(interval=0.05):
-            print(f"\rCurrent Lid Angle: {angle:.2f}°   ", end="", flush=True)
-            
-            try:
-                await websocket.send(json.dumps({"angle": angle}))
-            except websockets.ConnectionClosed:
-                print("\nWeb App disconnected.")
-                break
+    print("\nWeb App connected! Move your mouse UP to pump the bellows.")
+    async for message in websocket:
+        try:
+            data = json.loads(message)
+            mouse_y = data.get("mouseY", 0.5)
+            angle = (1.0 - mouse_y) * 90  # top of screen = 90°, bottom = 0°
+            print(f"\rAngle: {angle:.1f}°   ", end="", flush=True)
+            await websocket.send(json.dumps({"angle": angle}))
+        except websockets.ConnectionClosed:
+            print("\nWeb App disconnected.")
+            break
 
 async def main():
     async with websockets.serve(handler, "localhost", 8765):
